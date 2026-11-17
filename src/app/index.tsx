@@ -1,98 +1,61 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack, useRouter } from 'expo-router';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/empty-state';
+import { getActiveProgram, listPrograms } from '@/db/programs';
+import { useFocusedData } from '@/hooks/use-focused-data';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+async function loadHome(db: SQLiteDatabase) {
+  const [programs, activeProgram] = await Promise.all([listPrograms(db), getActiveProgram(db)]);
+  return { hasPrograms: programs.length > 0, activeProgram };
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { data } = useFocusedData(loadHome);
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-4 py-6 gap-6">
+      <Stack.Screen
+        options={{
+          title: 'Workout',
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/programs')}
+              className="min-h-12 justify-center px-2">
+              <Text className="text-[17px] text-text underline">Programs</Text>
+            </Pressable>
+          ),
+        }}
+      />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      {data && !data.hasPrograms ? (
+        <EmptyState
+          title="Build your first program."
+          actionLabel="Create program"
+          onAction={() => router.push('/edit-program')}
+        />
+      ) : null}
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+      {data?.hasPrograms && !data.activeProgram ? (
+        <EmptyState
+          title="Choose a program to train."
+          actionLabel="Choose program"
+          onAction={() => router.push('/programs')}
+        />
+      ) : null}
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      {data?.activeProgram ? (
+        <View className="gap-1">
+          <View className="flex-row items-center justify-between">
+            <Text className="flex-1 text-[28px] font-bold text-text">{data.activeProgram.name}</Text>
+            <Text className="text-sm font-semibold text-success">Active</Text>
+          </View>
+          <Text className="text-[17px] text-text-muted">No training days yet.</Text>
+        </View>
+      ) : null}
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
