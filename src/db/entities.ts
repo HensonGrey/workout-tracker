@@ -73,6 +73,12 @@ export type SetEntry = {
   reps: number;
 };
 
+/** A known exercise name offered when adding an exercise to a day; seeded with common ones, grows with names you type. */
+export type LibraryExercise = {
+  id: number;
+  name: string;
+};
+
 /** Per-session state of an exercise; a row exists only when it was skipped or has a note. */
 export type SessionExercise = {
   sessionId: number;

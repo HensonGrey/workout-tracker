@@ -1,7 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 1;
-
 const SCHEMA_V1 = `
   CREATE TABLE program (
     id INTEGER PRIMARY KEY,
@@ -67,6 +65,118 @@ const SCHEMA_V1 = `
   );
 `;
 
+// Frozen with this migration; later additions to the seed go in a new migration.
+const SEEDED_LIBRARY_EXERCISES = [
+  // Chest
+  'Bench Press',
+  'Incline Bench Press',
+  'Decline Bench Press',
+  'Dumbbell Bench Press',
+  'Incline Dumbbell Press',
+  'Close-Grip Bench Press',
+  'Machine Chest Press',
+  'Dumbbell Fly',
+  'Cable Fly',
+  'Pec Deck',
+  'Push-Up',
+  'Dips',
+  // Back
+  'Pull-Up',
+  'Chin-Up',
+  'Lat Pulldown',
+  'Close-Grip Pulldown',
+  'Straight-Arm Pulldown',
+  'Barbell Row',
+  'Pendlay Row',
+  'Dumbbell Row',
+  'Seated Cable Row',
+  'T-Bar Row',
+  'Chest-Supported Row',
+  'Machine Row',
+  'Inverted Row',
+  'Face Pull',
+  'Shrug',
+  'Deadlift',
+  'Rack Pull',
+  'Back Extension',
+  // Shoulders
+  'Overhead Press',
+  'Seated Dumbbell Press',
+  'Arnold Press',
+  'Push Press',
+  'Machine Shoulder Press',
+  'Lateral Raise',
+  'Cable Lateral Raise',
+  'Front Raise',
+  'Rear Delt Fly',
+  'Reverse Pec Deck',
+  'Upright Row',
+  // Arms
+  'Barbell Curl',
+  'EZ-Bar Curl',
+  'Dumbbell Curl',
+  'Hammer Curl',
+  'Incline Dumbbell Curl',
+  'Preacher Curl',
+  'Cable Curl',
+  'Concentration Curl',
+  'Triceps Pushdown',
+  'Overhead Triceps Extension',
+  'Skull Crusher',
+  'Triceps Kickback',
+  'Wrist Curl',
+  // Legs
+  'Squat',
+  'Front Squat',
+  'Goblet Squat',
+  'Hack Squat',
+  'Leg Press',
+  'Bulgarian Split Squat',
+  'Lunge',
+  'Walking Lunge',
+  'Step-Up',
+  'Romanian Deadlift (RDL)',
+  'Stiff-Leg Deadlift',
+  'Sumo Deadlift',
+  'Good Morning',
+  'Hip Thrust',
+  'Glute Bridge',
+  'Leg Extension',
+  'Lying Leg Curl',
+  'Seated Leg Curl',
+  'Nordic Curl',
+  'Hip Abduction',
+  'Hip Adduction',
+  'Standing Calf Raise',
+  'Seated Calf Raise',
+  // Core
+  'Hanging Leg Raise',
+  'Hanging Knee Raise',
+  'Cable Crunch',
+  'Ab Wheel Rollout',
+  'Crunch',
+  'Russian Twist',
+  'Pallof Press',
+  // Full body
+  'Kettlebell Swing',
+  'Power Clean',
+  'Muscle-Up',
+];
+
+const EXERCISE_LIBRARY_V2 = `
+  CREATE TABLE exercise_library (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE CHECK (trim(name) <> '')
+  );
+  INSERT INTO exercise_library (name) VALUES
+    ${SEEDED_LIBRARY_EXERCISES.map((name) => `('${name.replaceAll("'", "''")}')`).join(',\n    ')};
+`;
+
+// Index + 1 is the schema version; never edit an applied migration, append a new one.
+const MIGRATIONS = [SCHEMA_V1, EXERCISE_LIBRARY_V2];
+
+export const DATABASE_VERSION = MIGRATIONS.length;
+
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
 
@@ -75,8 +185,8 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   if (currentVersion >= DATABASE_VERSION) return;
 
   await db.withTransactionAsync(async () => {
-    if (currentVersion === 0) {
-      await db.execAsync(SCHEMA_V1);
+    for (const migration of MIGRATIONS.slice(currentVersion)) {
+      await db.execAsync(migration);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });
