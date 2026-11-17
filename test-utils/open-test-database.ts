@@ -1,13 +1,14 @@
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseSync } from 'node:sqlite';
 
 type SqlParam = string | number | null;
 
-// Exposes the expo-sqlite methods the data layer uses, backed by Node's built-in SQLite so tests run real SQL.
-export function openTestDatabase() {
+// Exposes the expo-sqlite methods the data layer uses (array params only), backed by Node's built-in SQLite so tests run real SQL.
+export function openTestDatabase(): SQLiteDatabase {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON');
 
-  return {
+  const testDatabase = {
     async execAsync(sql: string): Promise<void> {
       db.exec(sql);
     },
@@ -33,4 +34,5 @@ export function openTestDatabase() {
       }
     },
   };
+  return testDatabase as unknown as SQLiteDatabase;
 }
